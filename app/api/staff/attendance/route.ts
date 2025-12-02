@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/middleware/auth';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { getTodayDateIST, getTodayIST, getStartOfMonthIST, getEndOfMonthIST } from '@/utils/timezone';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,14 +23,16 @@ export async function GET(request: NextRequest) {
 
     if (month) {
       const [year, monthNum] = month.split('-').map(Number);
-      const date = new Date(year, monthNum - 1, 1);
-      startDate = startOfMonth(date);
-      endDate = endOfMonth(date);
+      // Use IST timezone for month boundaries
+      startDate = getStartOfMonthIST(year, monthNum);
+      endDate = getEndOfMonthIST(year, monthNum);
     } else {
-      // Default to current month
-      const now = new Date();
-      startDate = startOfMonth(now);
-      endDate = endOfMonth(now);
+      // Default to current month in IST
+      const today = getTodayIST();
+      const year = today.getFullYear();
+      const monthNum = today.getMonth() + 1;
+      startDate = getStartOfMonthIST(year, monthNum);
+      endDate = getEndOfMonthIST(year, monthNum);
     }
 
     // Get attendance records for the month
@@ -47,18 +50,21 @@ export async function GET(request: NextRequest) {
       orderBy: { date: 'desc' },
     });
 
-    // Get today's status
-    const today = new Date();
-    const todayDateString = today.toISOString().split('T')[0];
+    // Get today's status (using IST)
+    const todayDateIST = getTodayIST(); // Get today's date in IST
+    console.log('Fetching today attendance record for IST date:', todayDateIST);
+    
     const todayRecord = await prisma.attendanceRecord.findFirst({
       where: {
         userId,
-        date: new Date(todayDateString),
+        date: todayDateIST,
       },
       include: {
         lunchBreaks: true,
       },
     });
+    
+    console.log('Found today record:', todayRecord ? 'Yes' : 'No', todayRecord?.id);
 
     let status = 'not_punched_in';
     let activeLunchBreak = null;

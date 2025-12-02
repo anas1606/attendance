@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getCurrentLocation } from '@/lib/location';
 import WorkDoneModal from './WorkDoneModal';
 import LeaveReasonModal from './LeaveReasonModal';
+import MotivationalQuoteModal from './MotivationalQuoteModal';
 import {
   startScreenCapture,
   stopScreenCapture,
@@ -17,9 +18,8 @@ import {
 
 interface PunchButtonsProps {
   todayStatus: any;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
   workingDays?: string[];
-  staffName?: string;
 }
 
 const DAY_NAMES = [
@@ -32,78 +32,10 @@ const DAY_NAMES = [
   'Saturday',
 ];
 
-// Text-to-Speech helper function
-const speakGreeting = (message: string) => {
-  if ('speechSynthesis' in window) {
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.rate = 0.9; // Slightly slower for clarity
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    
-    // Try to use a more natural voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(voice => 
-      voice.lang.startsWith('en') && (voice.name.includes('Google') || voice.name.includes('Natural'))
-    );
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
-    
-    window.speechSynthesis.speak(utterance);
-  }
-};
-
-// Get energetic greeting based on time of day
-const getEnergeticPunchInMessage = (name: string) => {
-  const hour = new Date().getHours();
-  
-  if (hour >= 5 && hour < 12) {
-    // Morning greetings
-    const morningMessages = [
-      `Good morning, ${name}! Let's make today amazing!`,
-      `Good morning, ${name}! Time to crush those goals!`,
-      `Good morning, ${name}! Let's start this day with positive energy!`,
-    ];
-    return morningMessages[Math.floor(Math.random() * morningMessages.length)];
-  }
-  
-  if (hour >= 12 && hour < 17) {
-    // Afternoon greetings
-    const afternoonMessages = [
-      `Good afternoon, ${name}! Keep up the great work!`,
-      `Good afternoon, ${name}! You're doing fantastic!`,
-      `Good afternoon, ${name}! Let's keep the momentum going!`,
-    ];
-    return afternoonMessages[Math.floor(Math.random() * afternoonMessages.length)];
-  }
-  
-  if (hour >= 17 && hour < 21) {
-    // Evening greetings
-    const eveningMessages = [
-      `Good evening, ${name}! Let's finish strong!`,
-      `Good evening, ${name}! Time to wrap up productively!`,
-      `Good evening, ${name}! Let's make these hours count!`,
-    ];
-    return eveningMessages[Math.floor(Math.random() * eveningMessages.length)];
-  }
-  
-  // Late night greetings
-  const nightMessages = [
-    `Welcome back, ${name}! Ready to get things done!`,
-    `Hello, ${name}! Let's be productive tonight!`,
-    `Good evening, ${name}! Time to focus and deliver!`,
-  ];
-  return nightMessages[Math.floor(Math.random() * nightMessages.length)];
-};
-
 export default function PunchButtons({
   todayStatus,
   onSuccess,
   workingDays = [],
-  staffName,
 }: PunchButtonsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -111,23 +43,13 @@ export default function PunchButtons({
   const [todayDayName, setTodayDayName] = useState('');
   const [showWorkDoneModal, setShowWorkDoneModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [screenCaptureActive, setScreenCaptureActive] = useState(false);
   const [screenCapturePaused, setScreenCapturePaused] = useState(false);
   const [screenshotCount, setScreenshotCount] = useState(0);
   const [liveWorkingTime, setLiveWorkingTime] = useState<string>('00:00:00');
   const screenCheckInterval = useRef<NodeJS.Timeout | null>(null);
   const workingTimeInterval = useRef<NodeJS.Timeout | null>(null);
-
-  // Load speech synthesis voices
-  useEffect(() => {
-    if ('speechSynthesis' in window) {
-      // Load voices (they might not be immediately available)
-      window.speechSynthesis.getVoices();
-      window.speechSynthesis.addEventListener('voiceschanged', () => {
-        window.speechSynthesis.getVoices();
-      });
-    }
-  }, []);
 
   useEffect(() => {
     const today = new Date();
@@ -246,7 +168,7 @@ export default function PunchButtons({
     };
   }, [todayStatus]);
 
-  const makeRequest = async (endpoint: string, additionalData?: any): Promise<boolean> => {
+  const makeRequest = async (endpoint: string, additionalData?: any) => {
     setError('');
     setLoading(true);
 
@@ -272,15 +194,12 @@ export default function PunchButtons({
       const data = await response.json();
 
       if (response.ok) {
-        onSuccess();
-        return true;
+        await onSuccess();
       } else {
         setError(data.error || 'Operation failed');
-        return false;
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please enable location access.');
-      return false;
     } finally {
       setLoading(false);
     }
@@ -321,15 +240,15 @@ export default function PunchButtons({
       const data = await response.json();
 
       if (response.ok) {
-        onSuccess();
+        await onSuccess();
         // Update screenshot count
         const count = await getTodayScreenshotCount();
         setScreenshotCount(count);
         
-        // Play energetic greeting audio
-        const name = staffName || 'there';
-        const message = getEnergeticPunchInMessage(name);
-        speakGreeting(message);
+        // Show motivational quote after a brief delay (after UI updates)
+        setTimeout(() => {
+          setShowQuoteModal(true);
+        }, 1500);
       } else {
         // Stop screen capture if punch-in failed
         stopScreenCapture();
@@ -358,20 +277,7 @@ export default function PunchButtons({
     stopScreenCapture();
     setScreenCaptureActive(false);
     
-    const success = await makeRequest('/api/staff/punch-out', { workDone });
-    
-    // Play goodbye greeting if punch out was successful
-    if (success) {
-      const name = staffName || 'there';
-      const goodbyeMessages = [
-        `Great job today, ${name}! You've earned a good rest!`,
-        `Excellent work, ${name}! See you tomorrow!`,
-        `Well done, ${name}! Have a wonderful evening!`,
-        `Outstanding effort today, ${name}! Enjoy your time off!`,
-      ];
-      const message = goodbyeMessages[Math.floor(Math.random() * goodbyeMessages.length)];
-      speakGreeting(message);
-    }
+    await makeRequest('/api/staff/punch-out', { workDone });
   };
 
   const handleWorkDoneCancel = () => {
@@ -434,7 +340,7 @@ export default function PunchButtons({
       const data = await response.json();
 
       if (response.ok) {
-        onSuccess();
+        await onSuccess();
       } else {
         setError(data.error || 'Failed to mark leave');
       }
@@ -464,6 +370,13 @@ export default function PunchButtons({
         <LeaveReasonModal
           onSubmit={handleLeaveSubmit}
           onCancel={handleLeaveCancel}
+        />
+      )}
+
+      {showQuoteModal && (
+        <MotivationalQuoteModal
+          isOpen={showQuoteModal}
+          onClose={() => setShowQuoteModal(false)}
         />
       )}
 
@@ -709,21 +622,19 @@ export default function PunchButtons({
               </div>
             </button>
             
-            <div className="flex justify-center">
-              <button
-                onClick={handleMarkLeave}
-                disabled={loading}
-                className="group relative overflow-hidden bg-gradient-to-r from-purple-500 to-violet-600 text-white py-2 px-5 rounded-xl hover:from-purple-600 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                <div className="relative flex items-center justify-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-sm font-semibold">{loading ? 'Processing...' : "I'm on Leave Today"}</span>
-                </div>
-              </button>
-            </div>
+            <button
+              onClick={handleMarkLeave}
+              disabled={loading}
+              className="w-full group relative overflow-hidden bg-gradient-to-r from-purple-500 to-violet-600 text-white py-3 px-6 rounded-2xl hover:from-purple-600 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+              <div className="relative flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="font-semibold">{loading ? 'Processing...' : "I'm on Leave Today"}</span>
+              </div>
+          </button>
             
             <p className="text-xs text-gray-500 text-center">
               📸 Screen sharing permission will be required for monitoring

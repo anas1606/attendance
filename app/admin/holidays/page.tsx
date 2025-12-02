@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getNowIST } from '@/utils/timezone';
 
 export default function HolidaysManagementPage() {
   const router = useRouter();
@@ -168,11 +169,12 @@ export default function HolidaysManagementPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 <span className="text-sm font-bold text-gray-800">
-                  {new Date().toLocaleDateString('en-US', {
+                  {getNowIST().toLocaleDateString('en-US', {
                     weekday: 'short',
                     month: 'short',
                     day: 'numeric',
-                    year: 'numeric'
+                    year: 'numeric',
+                    timeZone: 'Asia/Kolkata'
                   })}
                 </span>
               </div>
@@ -330,6 +332,7 @@ export default function HolidaysManagementPage() {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
+                          timeZone: 'Asia/Kolkata'
                         })}
                       </div>
                     </td>

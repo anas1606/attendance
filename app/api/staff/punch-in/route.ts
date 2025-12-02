@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/middleware/auth';
-import { formatDate } from '@/utils/dateUtils';
+import { getNowIST, getTodayDateIST, getTodayIST } from '@/utils/timezone';
 
 const DAY_NAMES = [
   'Sunday',
@@ -33,8 +33,9 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = authResult.user.userId;
-    const now = new Date();
-    const todayDate = formatDate(now);
+    const now = getNowIST(); // Use IST time
+    const todayDate = getTodayDateIST(); // Get today's date in IST
+    const todayDateObj = getTodayIST(); // Date object for today in IST
 
     // Get staff profile to check working days
     const user = await prisma.user.findUnique({
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if today is a working day
+    // Check if today is a working day (using IST)
     const todayDayName = DAY_NAMES[now.getDay()];
     const workingDays = JSON.parse(user.staffProfile.workingDays);
 
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Check if today is a holiday
     const holiday = await prisma.holiday.findFirst({
-      where: { date: new Date(todayDate) },
+      where: { date: todayDateObj },
     });
 
     if (holiday) {
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     const existingRecord = await prisma.attendanceRecord.findFirst({
       where: {
         userId,
-        date: new Date(todayDate),
+        date: todayDateObj,
       },
     });
 
@@ -98,15 +99,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new attendance record
+    // Create new attendance record (using IST time)
     const attendance = await prisma.attendanceRecord.create({
       data: {
         userId,
         punchInTime: now,
         punchInLat: latitude,
         punchInLng: longitude,
-        date: new Date(todayDate),
+        date: todayDateObj,
       },
+    });
+    
+    console.log('Attendance record created with IST:', {
+      date: todayDateObj,
+      punchInTime: now,
+      userId
     });
 
     return NextResponse.json({

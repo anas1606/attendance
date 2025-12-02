@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import StaffList from '@/components/StaffList';
 import CreateStaffForm from '@/components/CreateStaffForm';
+import { getTodayDateIST, getNowIST } from '@/utils/timezone';
 
 interface StatusSummary {
   total: number;
@@ -22,7 +23,7 @@ export default function AdminStaffPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    getTodayDateIST() // Use IST timezone for today's date
   );
 
   useEffect(() => {
@@ -121,11 +122,12 @@ export default function AdminStaffPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 <span className="text-sm font-bold text-gray-800">
-                  {new Date().toLocaleDateString('en-US', {
+                  {getNowIST().toLocaleDateString('en-US', {
                     weekday: 'short',
                     month: 'short',
                     day: 'numeric',
-                    year: 'numeric'
+                    year: 'numeric',
+                    timeZone: 'Asia/Kolkata'
                   })}
                 </span>
               </div>
@@ -170,7 +172,7 @@ export default function AdminStaffPage() {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+                max={getTodayDateIST()}
                 className="px-3 py-1.5 border-2 border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-gray-900 font-semibold text-sm bg-white shadow-sm hover:border-blue-300 transition"
               />
             </div>
@@ -182,13 +184,14 @@ export default function AdminStaffPage() {
                   weekday: 'short',
                   month: 'short',
                   day: 'numeric',
+                  timeZone: 'Asia/Kolkata'
                 })}
               </span>
             </div>
 
-            {selectedDate !== new Date().toISOString().split('T')[0] && (
+            {selectedDate !== getTodayDateIST() && (
               <button
-                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                onClick={() => setSelectedDate(getTodayDateIST())}
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-1.5 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all text-sm font-semibold shadow-sm hover:shadow-md flex items-center gap-1.5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

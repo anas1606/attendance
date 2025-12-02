@@ -6,7 +6,9 @@ import AttendanceCalendar from '@/components/AttendanceCalendar';
 import PunchButtons from '@/components/PunchButtons';
 import AttendanceLogsList from '@/components/AttendanceLogsList';
 import ScreenshotsViewer from '@/components/ScreenshotsViewer';
+import MotivationalQuoteModal from '@/components/MotivationalQuoteModal';
 import { formatTime12Hour } from '@/utils/dateUtils';
+import { getNowIST } from '@/utils/timezone';
 
 export default function StaffDashboardPage() {
   const router = useRouter();
@@ -18,6 +20,8 @@ export default function StaffDashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState(
     new Date().toISOString().slice(0, 7)
   );
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     // Check authentication
@@ -36,8 +40,13 @@ export default function StaffDashboardPage() {
     }
 
     setUser(parsedUser);
-    fetchAttendance(selectedMonth);
-  }, [router, selectedMonth]);
+  }, [router]);
+
+  useEffect(() => {
+    if (user) {
+      fetchAttendance(selectedMonth);
+    }
+  }, [selectedMonth, user]);
 
   const fetchAttendance = async (month: string) => {
     try {
@@ -65,6 +74,21 @@ export default function StaffDashboardPage() {
         const holidaysData = await holidaysResponse.json();
         setHolidays(holidaysData.holidays || []);
       }
+      
+      // Show motivational quote after initial load (only once per day)
+      if (isInitialLoad) {
+        const today = new Date().toISOString().split('T')[0];
+        const lastQuoteDate = localStorage.getItem('lastQuoteDate');
+        
+        if (!lastQuoteDate || lastQuoteDate !== today) {
+          // Show quote modal after a brief delay
+          setTimeout(() => {
+            setShowQuoteModal(true);
+            localStorage.setItem('lastQuoteDate', today);
+          }, 1500);
+        }
+        setIsInitialLoad(false);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -79,8 +103,9 @@ export default function StaffDashboardPage() {
     router.push('/');
   };
 
-  const handleActionSuccess = () => {
-    fetchAttendance(selectedMonth);
+  const handleActionSuccess = async () => {
+    // Fetch updated attendance data
+    await fetchAttendance(selectedMonth);
   };
 
   if (loading || !user) {
@@ -95,6 +120,12 @@ export default function StaffDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-emerald-50 to-teal-50 relative overflow-hidden">
+      {/* Motivational Quote Modal */}
+      <MotivationalQuoteModal
+        isOpen={showQuoteModal}
+        onClose={() => setShowQuoteModal(false)}
+      />
+
       {/* Animated Background Pattern */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-0 -left-4 w-72 h-72 bg-emerald-300 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
@@ -125,11 +156,12 @@ export default function StaffDashboardPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span className="text-sm font-bold text-gray-800">
-                    {new Date().toLocaleDateString('en-US', {
+                    {getNowIST().toLocaleDateString('en-US', {
                       weekday: 'short',
                       month: 'short',
                       day: 'numeric',
-                      year: 'numeric'
+                      year: 'numeric',
+                      timeZone: 'Asia/Kolkata'
                     })}
                   </span>
                 </div>
@@ -190,14 +222,13 @@ export default function StaffDashboardPage() {
             todayStatus={todayStatus}
             onSuccess={handleActionSuccess}
             workingDays={profile ? JSON.parse(profile.workingDays) : []}
-            staffName={profile?.fullName || user.email.split('@')[0]}
           />
           </div>
 
           {/* Screenshots Viewer - Show when punched in or has screenshots today */}
           {(todayStatus?.status === 'punched_in' || todayStatus?.status === 'on_lunch_break' || todayStatus?.status === 'punched_out') && (
             <div className="h-full">
-              <ScreenshotsViewer />
+              <ScreenshotsViewer key={todayStatus?.status} />
             </div>
           )}
         </div>
@@ -212,14 +243,14 @@ export default function StaffDashboardPage() {
             </div>
             <label htmlFor="month" className="text-sm font-bold text-gray-800">
               Select Month:
-            </label>
-            <input
-              id="month"
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+          </label>
+          <input
+            id="month"
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
               className="px-4 py-2 border-2 border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 text-gray-900 font-semibold bg-white/80 backdrop-blur-sm shadow-sm hover:border-emerald-300 transition"
-            />
+          />
           </div>
         </div>
 

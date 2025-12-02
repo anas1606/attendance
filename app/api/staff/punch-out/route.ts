@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/middleware/auth';
-import { formatDate, calculateWorkingHours } from '@/utils/dateUtils';
+import { getNowIST, getTodayIST } from '@/utils/timezone';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,14 +30,14 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = authResult.user.userId;
-    const now = new Date();
-    const todayDate = formatDate(now);
+    const now = getNowIST(); // Use IST time
+    const todayDateIST = getTodayIST(); // Get today's date in IST
 
     // Find today's attendance record
     const attendance = await prisma.attendanceRecord.findFirst({
       where: {
         userId,
-        date: new Date(todayDate),
+        date: todayDateIST,
         punchOutTime: null,
       },
       include: {

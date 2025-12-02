@@ -190,6 +190,7 @@ export default function StaffDashboardPage() {
             todayStatus={todayStatus}
             onSuccess={handleActionSuccess}
             workingDays={profile ? JSON.parse(profile.workingDays) : []}
+            staffName={profile?.fullName || user.email.split('@')[0]}
           />
           </div>
 

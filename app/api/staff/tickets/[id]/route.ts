@@ -52,8 +52,10 @@ export async function GET(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    // Staff can only view their own assigned tickets
-    if (decoded.role === 'STAFF' && ticket.assignedToId !== decoded.userId) {
+    // Staff can view tickets assigned to them OR created by them
+    if (decoded.role === 'STAFF' && 
+        ticket.assignedToId !== decoded.userId && 
+        ticket.createdById !== decoded.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

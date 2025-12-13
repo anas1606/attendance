@@ -30,9 +30,9 @@ export async function PUT(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    // Staff can only update their assigned tickets
+    // Only the assigned staff can update status (not the creator if different)
     if (decoded.role === 'STAFF' && ticket.assignedToId !== decoded.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return NextResponse.json({ error: 'Only the assigned staff member can update ticket status' }, { status: 403 });
     }
 
     const body = await request.json();

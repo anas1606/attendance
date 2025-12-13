@@ -12,6 +12,7 @@ export default function StaffTicketsPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [ticketView, setTicketView] = useState<'all' | 'assigned' | 'created'>('all');
   const [filter, setFilter] = useState({
     status: '',
   });
@@ -27,13 +28,18 @@ export default function StaffTicketsPage() {
     }
 
     fetchTickets();
-  }, [router, filter]);
+  }, [router, filter, ticketView]);
 
   const fetchTickets = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       const queryParams = new URLSearchParams();
+      
+      // Add view filter
+      if (ticketView !== 'all') {
+        queryParams.append('view', ticketView);
+      }
       
       // Only add status param if it has an actual value
       if (filter.status && filter.status.trim() !== '') {
@@ -213,8 +219,44 @@ export default function StaffTicketsPage() {
           </div>
           )}
 
-          {/* View Mode Toggle */}
+          {/* View Mode and Filters */}
           <div className="mb-6 bg-white rounded-xl shadow-md p-5 border border-gray-100">
+            {/* Ticket View Tabs */}
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setTicketView('all')}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all text-sm ${
+                    ticketView === 'all'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  All Tickets
+                </button>
+                <button
+                  onClick={() => setTicketView('assigned')}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all text-sm ${
+                    ticketView === 'assigned'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Assigned to Me
+                </button>
+                <button
+                  onClick={() => setTicketView('created')}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all text-sm ${
+                    ticketView === 'created'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Created by Me
+                </button>
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button

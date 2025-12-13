@@ -30,8 +30,10 @@ export async function POST(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    // Staff can only comment on their assigned tickets
-    if (decoded.role === 'STAFF' && ticket.assignedToId !== decoded.userId) {
+    // Staff can comment on tickets assigned to them OR created by them
+    if (decoded.role === 'STAFF' && 
+        ticket.assignedToId !== decoded.userId && 
+        ticket.createdById !== decoded.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
